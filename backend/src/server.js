@@ -3,14 +3,20 @@ const neo4j = require('neo4j-driver');
 const cors = require('cors');
 require('dotenv').config();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-
 const driver = neo4j.driver(
   process.env.NEO4J_URI,
   neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASSWORD)
 );
+
+const courseRoutes = require('./routes/courses');
+const careerRoutes = require('./routes/careers');
+const errorHandler = require('./middleware/errorHandler');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
 
 app.get('/api/graph', async (req, res) => {
   const session = driver.session();
@@ -75,7 +81,11 @@ app.post('/api/alumni/update', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+app.use('/api/courses', courseRoutes);
+app.use('/api/careers', careerRoutes);
+
+app.use(errorHandler);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
