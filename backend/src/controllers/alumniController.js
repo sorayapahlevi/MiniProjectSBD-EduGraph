@@ -112,4 +112,26 @@ const createAlumni = async (req, res, next) => {
     }
 };
 
-module.exports = { getAllAlumni, getAlumniByName, getAlumniLearningPath, createAlumni };
+const updateAlumniProfile = async (req, res, next) => {
+    const session = driver.session();
+    try {
+        const { sso_id, position, company } = req.body;
+        await session.run(
+            `MATCH (u:User {sso_id: $sso_id})
+            MERGE (ca:Career {position: $position})
+            ON CREATE SET ca.industry = 'Technology'
+            MERGE (co:Company {name: $company})
+            ON CREATE SET co.sector = 'Technology'
+            MERGE (u)-[:WORKS_AS]->(ca)
+            MERGE (u)-[:WORKS_AT]->(co)`,
+            { sso_id, position, company }
+        );
+        res.json({ success: true });
+    } catch (err) {
+        next(err);
+    } finally {
+        await session.close();
+    }
+};
+
+module.exports = { getAllAlumni, getAlumniByName, getAlumniLearningPath, createAlumni, updateAlumniProfile };

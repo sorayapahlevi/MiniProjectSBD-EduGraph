@@ -4,7 +4,14 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+      },
+      boxShadow: {
+        glow: '0 25px 80px rgba(15, 23, 42, 0.35)',
+      },
+    },
   },
   plugins: [],
 }

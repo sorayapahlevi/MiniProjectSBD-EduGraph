@@ -62,21 +62,18 @@ const getMentorRecommendation = async (req, res, next) => {
     try {
         const { position } = req.params;
         const result = await session.run(
-        `MATCH (s:Skill)-[:REQUIRED_FOR]->(ca:Career)
-        WHERE toLower(ca.position) CONTAINS toLower($position)
-        MATCH (f:Faculty)-[:RESEARCHES]->(s)
-        OPTIONAL MATCH (f)-[:TEACHES]->(c:Course)
-        RETURN f.name AS facultyName, f.research_interest AS researchInterest,
-                s.name AS relevantSkill, collect(c.name) AS coursesTaught`,
-        { position }
+            `MATCH (ca:Career) WHERE toLower(ca.position) CONTAINS toLower($position)
+            MATCH (s:Skill)-[:REQUIRED_FOR]->(ca)
+            MATCH (f:Faculty)-[:RESEARCHES]->(s)
+            RETURN f.name AS facultyName, f.research_interest AS researchInterest, s.name AS relevantSkill`,
+            { position }
         );
-        const data = result.records.map(r => ({
-        facultyName: r.get('facultyName'),
-        researchInterest: r.get('researchInterest'),
-        relevantSkill: r.get('relevantSkill'),
-        coursesTaught: r.get('coursesTaught'),
+        const mentors = result.records.map(r => ({
+            facultyName: r.get('facultyName'),
+            researchInterest: r.get('researchInterest'),
+            relevantSkill: r.get('relevantSkill')
         }));
-        res.json({ success: true, data, count: data.length });
+        res.json({ success: true, data: mentors });
     } catch (err) {
         next(err);
     } finally {
@@ -116,4 +113,32 @@ const getGraphStats = async (req, res, next) => {
     }
 };
 
-module.exports = { getCareerPath, getAlumniByCareer, getMentorRecommendation, getGraphStats };
+const getEntireGraph = async (req, res, next) => {
+    const session = driver.session();
+    try {
+        const result = await session.run('MATCH (n) OPTIONAL MATCH (n)-[r]->(m) RETURN n, r, m');
+        const nodes = [];
+        const links = [];
+        result.records.forEach(record => {
+            const n = record.get('n');
+            const r = record.get('r');
+            const m = record.get('m');
+            if (n && !nodes.find(node => node.id === n.elementId)) {
+                nodes.push({ id: n.elementId, label: n.labels[0], name: n.properties.name || n.properties.position || n.properties.code });
+            }
+            if (m && !nodes.find(node => node.id === m.elementId)) {
+                nodes.push({ id: m.elementId, label: m.labels[0], name: m.properties.name || m.properties.position || m.properties.code });
+            }
+            if (r) {
+                links.push({ source: n.elementId, target: m.elementId, type: r.type });
+            }
+        });
+        res.json({ nodes, links });
+    } catch (err) {
+        next(err);
+    } finally {
+        await session.close();
+    }
+};
+
+module.exports = { getCareerPath, getAlumniByCareer, getMentorRecommendation, getGraphStats, getEntireGraph };
