@@ -18,43 +18,7 @@ Instead of separating courses, skills, faculty research, and alumni career paths
 
 ## 🏗️ Architecture Diagram
 
-```mermaid
-graph TD
-    subgraph Client Layer [Client Layer - Frontend]
-        UI[React UI<br/>Vite + Tailwind CSS]
-        GraphVis[react-force-graph<br/>Canvas 2D Engine]
-        UI --- GraphVis
-    end
-
-    subgraph API Layer [API Layer - Backend]
-        Router[Express Router<br/>REST Endpoints]
-        Controllers[Controllers<br/>Cypher Logic]
-        Driver[neo4j-driver]
-        Router --> Controllers
-        Controllers --> Driver
-    end
-
-    subgraph Data Layer [Data Layer - Database]
-        Neo4j[(Neo4j Graph DB<br/>Nodes & Edges)]
-    end
-
-    %% Flow of data
-    UI -->|HTTP GET/POST (Axios)| Router
-    Driver -->|Bolt Protocol (Port 7687)| Neo4j
-    Neo4j -->|Graph Result| Driver
-    Router -->|JSON Response| UI
-    
-    %% External Simulation
-    SSO[Simulasi SSO UI] -.->|Dummy Auth| UI
-
-    classDef react fill:#087ea4,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef nodejs fill:#339933,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef neo4j fill:#018bff,stroke:#fff,stroke-width:2px,color:#fff;
-    
-    class UI,GraphVis react;
-    class Router,Controllers,Driver nodejs;
-    class Neo4j neo4j;
-```
+<img width="3621" height="4353" alt="Client-API Interaction Flow-2026-05-21-202123" src="https://github.com/user-attachments/assets/3f42a299-0c50-4859-8c22-f3304f0605ec" />
 
 ### Architecture Overview
 1. **Client Layer (Frontend):** Built with React 19, Vite, and Tailwind CSS v4. It utilizes `react-force-graph` to render dynamic, interactive 2D network visualizations of the academic paths.
@@ -100,4 +64,3 @@ The application will be accessible at `http://localhost:5173`.
 
 **Group 6**
 * Soraya Azzizah Pahlevi (2406487001)
-```
