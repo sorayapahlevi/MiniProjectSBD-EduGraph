@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ForceGraph2D } from 'react-force-graph';
+import ForceGraph2D from 'react-force-graph-2d';
 import axios from 'axios';
 
 const EduGraphUI = () => {
@@ -7,12 +7,21 @@ const EduGraphUI = () => {
   const [selectedNode, setSelectedNode] = useState(null);
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({ position: '', company: '' });
+  const [searchPosition, setSearchPosition] = useState('');
+  const [mentors, setMentors] = useState([]);
+  const [highlightNodes, setHighlightNodes] = useState(new Set());
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchGraphData = async () => {
+    setIsLoading(true);
     try {
       const response = await axios.get('http://localhost:3000/api/graph');
       setGraphData(response.data);
-    } catch (error) {}
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -23,7 +32,9 @@ const EduGraphUI = () => {
     try {
       const response = await axios.post('http://localhost:3000/api/auth/sso', { sso_id: "2406487001" });
       setUser(response.data);
-    } catch (error) {}
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleUpdate = async (e) => {
@@ -36,91 +47,183 @@ const EduGraphUI = () => {
       });
       fetchGraphData();
       setFormData({ position: '', company: '' });
-    } catch (error) {}
-  };
-
-  const getNodeColor = (label) => {
-    switch(label) {
-      case 'Career': return '#FF1493';
-      case 'Skill': return '#00FA9A';
-      case 'Course': return '#1E90FF';
-      case 'User': return '#FFA500';
-      case 'Company': return '#9370DB';
-      default: return '#cccccc';
+    } catch (error) {
+      console.error(error);
     }
   };
 
+  const handleSearchMentors = async () => {
+    if (!searchPosition) return;
+    try {
+      const response = await axios.get(`http://localhost:3000/api/graph/mentor/${searchPosition}`);
+      setMentors(response.data.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleHighlightPath = async () => {
+    if (!selectedNode || selectedNode.label !== 'Career') return;
+    try {
+      const response = await axios.get(`http://localhost:3000/api/graph/career-path/${selectedNode.name}`);
+      const pathData = response.data.data;
+      const nodesToHighlight = new Set();
+      nodesToHighlight.add(selectedNode.id);
+      graphData.nodes.forEach(node => {
+        const match = pathData.find(p => p.courseName === node.name || p.skillName === node.name);
+        if (match) {
+          nodesToHighlight.add(node.id);
+        }
+      });
+      setHighlightNodes(nodesToHighlight);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const getNodeColor = (node) => {
+    if (highlightNodes.size > 0 && !highlightNodes.has(node.id)) {
+      return '#2c2f33';
+    }
+    switch(node.label) {
+      case 'Career': return '#FF49B5';
+      case 'Skill': return '#34D399';
+      case 'Course': return '#60A5FA';
+      case 'User': return '#FBBF24';
+      case 'Faculty': return '#FACC15';
+      case 'Company': return '#A78BFA';
+      default: return '#94A3B8';
+    }
+  };
+
+  const totalNodes = graphData.nodes.length;
+  const totalLinks = graphData.links.length;
+
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white font-sans">
-      <header className="flex justify-between items-center px-6 py-4 bg-gray-800 border-b border-gray-700">
-        <div className="text-2xl font-bold text-pink-500">EduGraph</div>
-        <nav className="flex space-x-4">
+    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-6 py-6 bg-slate-900/95 border-b border-slate-800 shadow-xl shadow-slate-950/30 backdrop-blur">
+        <div>
+          <div className="text-3xl font-bold tracking-tight text-pink-400">EduGraph</div>
+          <p className="mt-2 text-sm text-slate-400 max-w-xl">Visualize course, skill, career, and alumni relationships with an interactive graph. Click any node to explore details and career paths.</p>
+        </div>
+
+        <nav className="flex items-center gap-3">
           {!user ? (
-            <button onClick={handleLogin} className="bg-pink-600 hover:bg-pink-700 px-4 py-2 rounded font-semibold text-sm transition-colors">
+            <button onClick={handleLogin} className="inline-flex items-center justify-center rounded-full bg-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-pink-500/20 transition hover:bg-pink-500">
               Login SSO UI
             </button>
           ) : (
-            <div className="text-sm font-medium text-green-400 bg-gray-700 px-4 py-2 rounded">
-              SSO Terautentikasi: {user.sso_id}
+            <div className="rounded-3xl border border-slate-700 bg-slate-900/95 px-4 py-3 text-sm text-slate-200 shadow-sm">
+              <div className="font-semibold text-slate-100">SSO Terautentikasi</div>
+              <div className="text-slate-400">{user.name} • {user.sso_id}</div>
             </div>
           )}
         </nav>
       </header>
 
       <main className="flex flex-1 overflow-hidden">
-        <section className="flex-1 relative bg-black">
-          {user && (
-            <div className="absolute top-4 left-4 z-10 bg-gray-800 p-4 rounded-lg border border-gray-700 shadow-xl w-80">
-              <h3 className="text-sm font-semibold mb-3 text-gray-300">Update Profil Alumni</h3>
-              <form onSubmit={handleUpdate} className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Posisi Pekerjaan (Cth: Data Scientist)"
-                  className="w-full p-2 bg-gray-900 border border-gray-600 rounded text-sm focus:outline-none focus:border-pink-500"
-                  value={formData.position}
-                  onChange={(e) => setFormData({...formData, position: e.target.value})}
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Perusahaan Saat Ini"
-                  className="w-full p-2 bg-gray-900 border border-gray-600 rounded text-sm focus:outline-none focus:border-pink-500"
-                  value={formData.company}
-                  onChange={(e) => setFormData({...formData, company: e.target.value})}
-                  required
-                />
-                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded text-sm font-semibold transition-colors">
-                  Simpan & Perbarui Graf
-                </button>
-              </form>
+        <section className="relative flex-1 overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(129,140,248,0.16),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(236,72,153,0.18),_transparent_28%)] pointer-events-none" />
+
+          <div className="absolute top-5 left-5 z-20 flex flex-col gap-3">
+            <div className="rounded-3xl border border-slate-700 bg-slate-900/90 px-4 py-3 text-sm text-slate-200 shadow-xl shadow-slate-950/40 backdrop-blur">
+              <div className="font-semibold text-white">Graph metrics</div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-slate-950/95 p-3 text-center">
+                  <div className="text-xs uppercase tracking-[0.24em] text-slate-500">Nodes</div>
+                  <div className="mt-2 text-2xl font-bold text-pink-400">{totalNodes}</div>
+                </div>
+                <div className="rounded-2xl bg-slate-950/95 p-3 text-center">
+                  <div className="text-xs uppercase tracking-[0.24em] text-slate-500">Links</div>
+                  <div className="mt-2 text-2xl font-bold text-sky-400">{totalLinks}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4 text-sm text-slate-200 shadow-xl shadow-slate-950/40 backdrop-blur w-72">
+              <div className="font-semibold text-white mb-3">Legend</div>
+              <div className="space-y-2 text-slate-300">
+                <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-pink-400" /> Career</div>
+                <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-sky-400" /> Course</div>
+                <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Skill</div>
+                <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> User / Faculty</div>
+              </div>
+            </div>
+          </div>
+
+          {isLoading && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/90 px-6">
+              <div className="rounded-3xl border border-slate-700 bg-slate-900/95 px-6 py-8 text-center shadow-2xl shadow-slate-950/40 backdrop-blur">
+                <div className="text-sm uppercase tracking-[0.28em] text-slate-500">Memuat data graf</div>
+                <div className="mt-4 text-3xl font-semibold text-white">Mohon tunggu...</div>
+                <div className="mt-2 text-slate-400">Mengambil node dan relasi dari backend.</div>
+              </div>
             </div>
           )}
 
           <ForceGraph2D
             graphData={graphData}
-            backgroundColor="#000000"
-            nodeRelSize={6}
-            linkColor={() => '#4b5563'}
-            nodeColor={node => getNodeColor(node.label)}
-            onNodeClick={(node) => setSelectedNode(node)}
+            backgroundColor="transparent"
+            nodeRelSize={7}
+            linkWidth={1.4}
+            linkDirectionalParticles={1}
+            linkDirectionalParticleWidth={1.6}
+            linkColor={() => '#475569'}
+            nodeColor={getNodeColor}
+            onNodeClick={(node) => {
+              setSelectedNode(node);
+              setHighlightNodes(new Set());
+            }}
             nodeLabel="name"
           />
         </section>
 
-        <aside className="w-96 bg-gray-800 border-l border-gray-700 p-6 overflow-y-auto">
-          <h2 className="text-xl font-bold mb-4 border-b border-gray-700 pb-3">Detail Entitas</h2>
-          {selectedNode ? (
-            <div className="space-y-4">
-              <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-                <div className="text-sm font-bold text-pink-400">{selectedNode.label}</div>
-                <div className="text-lg font-medium text-white">{selectedNode.name}</div>
+        <aside className="w-96 bg-gray-800 border-l border-gray-700 p-6 overflow-y-auto flex flex-col space-y-6">
+          <div>
+            <h2 className="text-xl font-bold mb-4 border-b border-gray-700 pb-3">Detail Entitas</h2>
+            {selectedNode ? (
+              <div className="space-y-4">
+                <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
+                  <div className="text-sm font-bold text-pink-400">{selectedNode.label}</div>
+                  <div className="text-lg font-medium text-white">{selectedNode.name}</div>
+                </div>
+                {selectedNode.label === 'Career' && (
+                  <button onClick={handleHighlightPath} className="w-full bg-green-600 hover:bg-green-700 py-2 rounded text-sm font-semibold transition-colors">
+                    Lihat Jalur Lengkap
+                  </button>
+                )}
               </div>
+            ) : (
+              <div className="text-gray-400 text-sm text-center py-4">
+                Pilih node untuk melihat detail.
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-gray-700 pt-4">
+            <h2 className="text-xl font-bold mb-4">Cari Mentor Akademik</h2>
+            <div className="flex space-x-2 mb-4">
+              <input
+                type="text"
+                placeholder="Masukkan Posisi Karir"
+                className="flex-1 p-2 bg-gray-900 border border-gray-600 rounded text-sm focus:outline-none focus:border-pink-500"
+                value={searchPosition}
+                onChange={(e) => setSearchPosition(e.target.value)}
+              />
+              <button onClick={handleSearchMentors} className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-semibold transition-colors">
+                Cari
+              </button>
             </div>
-          ) : (
-            <div className="text-gray-400 text-sm text-center mt-10">
-              Pilih node untuk melihat detail.
+            <div className="space-y-3">
+              {mentors.map((mentor, index) => (
+                <div key={index} className="bg-gray-900 p-3 rounded border border-gray-700 text-sm">
+                  <div className="font-bold text-pink-400">{mentor.facultyName}</div>
+                  <div className="text-gray-300 text-xs mt-1">Riset: {mentor.researchInterest}</div>
+                  <div className="text-gray-400 text-xs mt-1">Keahlian: {mentor.relevantSkill}</div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
         </aside>
       </main>
     </div>
