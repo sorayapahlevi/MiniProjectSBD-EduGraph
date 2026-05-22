@@ -29,13 +29,13 @@ Instead of separating courses, skills, faculty research, and alumni career paths
 
 ### 1. Prerequisites
 - **Node.js** (v20+ recommended)
-- **Neo4j Desktop** (running locally) or **Neo4j AuraDB** (cloud)
-- Create a `.env` file inside the `backend/` directory with the following credentials:
+- **Neo4j AuraDB** (cloud)
+- Create a `.env` file inside the `backend/` directory with the credentials Neo4j AuraDB:
 
 ```env
-NEO4J_URI=bolt://127.0.0.1:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_database_password
+NEO4J_URI=neo4j+s://eecad955.databases.neo4j.io
+NEO4J_USER=eecad955
+NEO4J_PASSWORD=bZ_UgDGNbrqm3EfwUxBeykFav_ANI3OKCwKwJMGQOQg
 PORT=3000
 ```
 
@@ -65,3 +65,4 @@ The application will be accessible at `http://localhost:5173`.
 **Group 6**
 * Soraya Azzizah Pahlevi (2406487001)
 * Fahmi Milan Amyar (2406360060)
+* Haitsam Ahmad Fakhri (2406357740)
