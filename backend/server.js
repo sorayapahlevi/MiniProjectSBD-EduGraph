@@ -18,6 +18,7 @@ app.use('/api/faculty', require('./src/routes/faculty'));
 app.use('/api/skills', require('./src/routes/skills'));
 app.use('/api/graph', require('./src/routes/graph'));
 app.use('/api/auth', require('./src/routes/auth'));
+app.use('/api/analytics', require('./src/routes/analytics'));
 
 app.use(errorHandler);
 

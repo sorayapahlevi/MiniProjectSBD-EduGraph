@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import axios from 'axios';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
+  PieChart, Pie, ResponsiveContainer
+} from 'recharts';
 
 const EduGraphUI = () => {
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
@@ -12,6 +16,18 @@ const EduGraphUI = () => {
   const [highlightNodes, setHighlightNodes] = useState(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [mostConnected, setMostConnected] = useState([]);
+const [popularCareers, setPopularCareers] = useState([]);
+
+const COLOR_MAP = {
+  Career:  '#FF49B5',
+  Course:  '#60A5FA',
+  Skill:   '#34D399',
+  Faculty: '#FBBF24',
+  User:    '#FBBF24',
+};
+
+const PIE_COLORS = ['#FF49B5','#60A5FA','#34D399','#FBBF24','#A78BFA','#F97316','#06B6D4','#84CC16'];
 
   const fetchGraphData = async () => {
     setIsLoading(true);
@@ -25,9 +41,23 @@ const EduGraphUI = () => {
     }
   };
 
-  useEffect(() => {
-    fetchGraphData();
-  }, []);
+  const fetchAnalytics = async () => {
+    try {
+      const [connRes, careerRes] = await Promise.all([
+        axios.get('http://localhost:3000/api/analytics/most-connected'),
+        axios.get('http://localhost:3000/api/analytics/popular-careers'),
+      ]);
+      setMostConnected(connRes.data.data);
+      setPopularCareers(careerRes.data.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+useEffect(() => {
+  fetchGraphData();
+  fetchAnalytics();
+}, []);
 
   const handleLogin = async () => {
     try {
@@ -318,7 +348,93 @@ const EduGraphUI = () => {
               </div>
             ))}
           </div>
+          
+          {/* ── Analytics ── */}
+          <div className="border-t border-gray-700 pt-4">
+            <h2 className="text-xl font-bold mb-1">Analytics</h2>
+            <p className="text-xs text-slate-400 mb-5">
+              Statistik koneksi dan tren karir dari seluruh graph.
+            </p>
 
+            {/* Most Connected Nodes */}
+            <div className="mb-6">
+              <div className="text-sm font-semibold text-slate-300 mb-3">Most Connected Nodes</div>
+              {mostConnected.length === 0 ? (
+                <div className="text-xs text-slate-500 text-center py-3">Memuat...</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart
+                    data={mostConnected}
+                    layout="vertical"
+                    margin={{ left: 8, right: 16, top: 0, bottom: 0 }}
+                  >
+                    <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={100}
+                      tick={{ fill: '#cbd5e1', fontSize: 10 }}
+                    />
+                    <Tooltip
+                      contentStyle={{ background: '#355281', border: '1px solid #334155', borderRadius: 10, fontSize: 12 }}
+                      formatter={(val, _, props) => [`${val} connections`, props.payload.type]}
+                    />
+                    <Bar dataKey="degree" radius={[0, 4, 4, 0]}>
+                      {mostConnected.map((entry, i) => (
+                        <Cell key={i} fill={COLOR_MAP[entry.type] ?? '#94A3B8'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {/* Popular Career Paths */}
+            <div>
+              <div className="text-sm font-semibold text-slate-300 mb-3">Popular Career Paths</div>
+              {popularCareers.length === 0 ? (
+                <div className="text-xs text-slate-500 text-center py-3">Memuat...</div>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={popularCareers}
+                        dataKey="count"
+                        nameKey="career"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={85}
+                      >
+                        {popularCareers.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 10, fontSize: 12 }}
+                        formatter={(val) => [`${val} alumni`]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+
+                  {/* Ranked list */}
+                  <ol className="mt-3 space-y-2">
+                    {popularCareers.map((item, i) => (
+                      <li key={i} className="flex items-center gap-2 text-xs">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
+                        />
+                        <span className="text-slate-300 truncate">{item.career}</span>
+                        <span className="ml-auto text-slate-500 shrink-0">{item.count} alumni</span>
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              )}
+            </div>
+          </div>
         </aside>
       </main>
     </div>
