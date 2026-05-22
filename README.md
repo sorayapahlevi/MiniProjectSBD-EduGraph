@@ -64,3 +64,4 @@ The application will be accessible at `http://localhost:5173`.
 
 **Group 6**
 * Soraya Azzizah Pahlevi (2406487001)
+* Fahmi Milan Amyar (2406360060)
