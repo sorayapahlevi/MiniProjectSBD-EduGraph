@@ -10,6 +10,7 @@ const alumniRoutes = require('./routes/alumni');
 const facultyRoutes = require('./routes/faculty');
 const graphRoutes = require('./routes/graph');
 const errorHandler = require('./middleware/errorHandler');
+const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,7 @@ app.use('/api/careers', careerRoutes);
 app.use('/api/alumni', alumniRoutes);
 app.use('/api/faculty', facultyRoutes);
 app.use('/api/graph', graphRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Global error handler
 app.use(errorHandler);
