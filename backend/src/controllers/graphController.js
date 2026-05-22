@@ -141,4 +141,73 @@ const getEntireGraph = async (req, res, next) => {
     }
 };
 
-module.exports = { getCareerPath, getAlumniByCareer, getMentorRecommendation, getGraphStats, getEntireGraph };
+// Topic neighborhood: find 1-2 hop neighbors from a matching Skill node
+const getTopicNeighborhood = async (req, res, next) => {
+    const session = driver.session();
+    try {
+        const { topic } = req.params;
+        const result = await session.run(
+            `MATCH (s:Skill)
+             WHERE toLower(s.name) CONTAINS toLower($topic)
+                OR toLower(s.category) CONTAINS toLower($topic)
+             WITH s LIMIT 3
+
+             // 1-hop: direct neighbors
+             OPTIONAL MATCH (c:Course)-[:BUILDS_SKILL]->(s)
+             OPTIONAL MATCH (f:Faculty)-[:RESEARCHES]->(s)
+             OPTIONAL MATCH (s)-[:REQUIRED_FOR]->(ca:Career)
+
+             // 2-hop: faculty who teach those courses
+             OPTIONAL MATCH (f2:Faculty)-[:TEACHES]->(c)
+
+             RETURN s,
+                    collect(DISTINCT c)  AS courses,
+                    collect(DISTINCT f)  AS researchFaculty,
+                    collect(DISTINCT f2) AS teachingFaculty,
+                    collect(DISTINCT ca) AS careers`,
+            { topic }
+        );
+
+        if (result.records.length === 0) {
+            return res.json({ success: true, data: null, message: 'Topik tidak ditemukan.' });
+        }
+
+        const toInt = (val) => {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'object' && 'low' in val) return val.low;
+    return val;
+};
+
+        const data = result.records.map(r => ({
+            skill: r.get('s').properties,
+            courses: r.get('courses').map(c => ({
+                ...c.properties,
+                semester: toInt(c.properties.semester),
+                credits: toInt(c.properties.credits),
+            })),
+            mentors: [
+                ...r.get('researchFaculty').map(f => ({
+                    ...f.properties, connection: 'Meneliti skill ini'
+                })),
+                ...r.get('teachingFaculty').map(f => ({
+                    ...f.properties, connection: 'Mengajar mata kuliah terkait'
+                }))
+            ].filter((m, i, arr) =>
+                arr.findIndex(x => x.name === m.name) === i
+            ),
+            careers: r.get('careers').map(ca => ca.properties)
+        }));
+
+        res.json({ success: true, data });
+    } catch (err) {
+        next(err);
+    } finally {
+        await session.close();
+    }
+};
+
+module.exports = {
+    getCareerPath, getAlumniByCareer, getMentorRecommendation,
+    getGraphStats, getEntireGraph,
+    getTopicNeighborhood  
+};
